@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Calendar</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fcfafa;
+      margin: 0;
+      padding: 0;
+    }
+    .calendar {
+      max-width: 400px;
+      margin: 40px auto;
+      background: #a439d5;
+      border-radius: 8px;
+      box-shadow: 4px 6px 50px rgb(213, 126, 249);
+      padding: 20px;
+   
+    }
+    .calendar-header {
+      text-align: center;
+      font-size: 1.4em;
+      margin-bottom: 10px;
+      font-weight:700;
+      border-radius: 40px 40px 40px 40px;
+      border-color: #020507;
+      border-block: 2px solid;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      
+    }
+    .day-label, .date-cell {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .day-label {
+      font-weight: bold;
+      background: #f1551d;
+      border-radius: 4px;
+    }
+    .date-cell {
+      background: #d7fc05;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      min-height: 40px;
+      
+      text-align: center;
+    }
+    .date-cell:hover {
+      background: #4067e8;
+    }
+    .date-cell.has-event {
+      background: #c7f9cc;
+      border: 4px solid #070207;
+    }
+    .event-dot {
+      width: 7px;
+      height: 7px;
+      background: #142d01;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+    }
+    .event-text {
+      font-size: 0.8em;
+      color: #333;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 3px;
+      right: 6px;
+      background: #ff595e;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 12px;
+      cursor: pointer;
+      display: none;
+    }
+    .date-cell.has-event:hover .delete-btn {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar">
+    <div class="calendar-header" id="calendar-header"></div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+  </div>
+  <script>
+    const calendarGrid = document.getElementById('calendar-grid');
+    const calendarHeader = document.getElementById('calendar-header');
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Get current month/year
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-indexed
+
+    // For localStorage key
+    const storageKey = `calendar-events-${year}-${month}`;
+
+    // Load events from localStorage
+    function loadEvents() {
+      return JSON.parse(localStorage.getItem(storageKey) || '{}');
+    }
+
+    // Save events to localStorage
+    function saveEvents(events) {
+      localStorage.setItem(storageKey, JSON.stringify(events));
+    }
+
+    function renderCalendar() {
+      calendarGrid.innerHTML = '';
+      calendarHeader.textContent = `${today.toLocaleString('default', { month: 'long' })} ${year}`;
+
+      // Day labels
+      for (let d = 0; d < 7; d++) {
+        const label = document.createElement('div');
+        label.className = 'day-label';
+        label.textContent = dayLabels[d];
+        calendarGrid.appendChild(label);
+      }
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const events = loadEvents();
+
+      // Fill empty cells before the 1st
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'date-cell';
+        calendarGrid.appendChild(emptyCell);
+      }
+
+      // Fill days
+      for (let date = 1; date <= daysInMonth; date++) {
+        const cell = document.createElement('div');
+        cell.className = 'date-cell';
+        cell.dataset.date = date;
+
+        if (events[date]) {
+          cell.classList.add('has-event');
+          // Show event text (shortened)
+          const eventText = document.createElement('div');
+          eventText.className = 'event-text';
+          eventText.textContent = events[date];
+          cell.appendChild(eventText);
+
+          // Dot indicator
+          const dot = document.createElement('div');
+          dot.className = 'event-dot';
+          cell.appendChild(dot);
+
+          // Delete button
+          const delBtn = document.createElement('button');
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = '×';
+          delBtn.title = 'Delete event';
+          delBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('Delete this event?')) {
+              delete events[date];
+              saveEvents(events);
+              renderCalendar();
+            }
+          };
+          cell.appendChild(delBtn);
+        }
+
+        cell.textContent = cell.textContent ? date + '\n' : date;
+        cell.onclick = () => {
+          if (events[date]) {
+            // Edit event
+            const newEvent = prompt('Edit or delete the event. Leave blank to delete:', events[date]);
+            if (newEvent === null) return; // Cancel
+            if (newEvent.trim() === '') {
+              delete events[date];
+            } else {
+              events[date] = newEvent.trim();
+            }
+            saveEvents(events);
+            renderCalendar();
+          } else {
+            // Add event
+            const event = prompt('Add an event for this date:');
+            if (event && event.trim() !== '') {
+              events[date] = event.trim();
+              saveEvents(events);
+              renderCalendar();
+            }
+          }
+        };
+
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    renderCalendar();
+  </script>
+</body>
+</html>
